@@ -1,4 +1,4 @@
-from tools.telegram_scraper import get_latest_messages_tool
+from .tools.telegram_scraper import get_latest_messages_tool
 
 
 def register_tools(category = 'all'):
