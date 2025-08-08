@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Dict, Any
 from telethon import TelegramClient, events
 from telethon.tl.types import Channel, Chat, User, Message
@@ -150,7 +150,7 @@ class TelethonChannelCollector:
         hours: int = 24
     ) -> List[Dict[str, Any]]:
         """Get messages from the last N hours."""
-        cutoff_time = datetime.now() - timedelta(hours=hours)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
         return await self.get_messages_after_date(channel_username, cutoff_time)
     
     async def get_messages_after_date(
