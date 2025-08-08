@@ -3,7 +3,8 @@ import os
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from dotenv import load_dotenv
-from handlers import start, help_command, info_command, echo_command, caps_command, echo_message, error_handler
+
+from .handlers import start, help_command, info_command, echo_command, caps_command, echo_message, error_handler
 
 # Load environment variables
 load_dotenv()
