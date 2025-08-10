@@ -1,7 +1,6 @@
 import asyncio
 from telegram_scraper.collector import TelethonChannelCollector
-from llama_index.core.tools import FunctionTool
-from llama_index.core.tools.types import ToolMetadata
+from langchain.tools import tool
 
 
 async def fetch_messages_async() -> str:
@@ -31,6 +30,7 @@ async def fetch_messages_async() -> str:
         await collector.close()
 
 
+@tool
 def get_latest_messages(request: str = "latest messages") -> str:
     """
     Get the latest messages from followed Telegram channels.
@@ -46,10 +46,3 @@ def get_latest_messages(request: str = "latest messages") -> str:
         return asyncio.run(fetch_messages_async())
     except Exception as e:
         return f"Error fetching messages: {str(e)}"
-
-
-get_latest_messages_tool = FunctionTool.from_defaults(
-    name="get_latest_messages",
-    description="Fetch the latest messages from followed Telegram channels.",
-    fn=get_latest_messages,
-)

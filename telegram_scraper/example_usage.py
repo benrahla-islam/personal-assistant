@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Example script showing how to use the TelethonChannelCollector
+Run with: uv run telegram_scraper/example_usage.py
 """
 
 import asyncio
