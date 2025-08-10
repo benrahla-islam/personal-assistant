@@ -7,10 +7,16 @@ import dotenv
 import os
 
 from .tool_regestery import register_tools
+from config import setup_development_logging, get_logger
+
+# Set up colored logging
+setup_development_logging()
+logger = get_logger(__name__)
 
 dotenv.load_dotenv()
 
 tools = register_tools()
+logger.info(f"Registered {len(tools)} tools for the agent")
 
 # Create memory for conversation history
 memory = ConversationBufferWindowMemory(
@@ -18,6 +24,7 @@ memory = ConversationBufferWindowMemory(
     return_messages=True,
     k=10  # Keep last 10 conversation turns
 )
+logger.debug("Initialized conversation memory with window size 10")
 
 # Initialize the LLM
 llm = ChatGoogleGenerativeAI(
@@ -25,6 +32,7 @@ llm = ChatGoogleGenerativeAI(
     google_api_key=os.getenv("GOOGLE_API_KEY"),
     temperature=0.1
 )
+logger.info("Initialized Gemini LLM with temperature 0.1")
 
 # Create a ReAct prompt template
 react_prompt = PromptTemplate.from_template("""
@@ -62,6 +70,7 @@ agent = create_react_agent(
     tools=tools,
     prompt=react_prompt
 )
+logger.info("Created ReAct agent successfully")
 
 # Create the agent executor
 agent_executor = AgentExecutor(
@@ -72,3 +81,4 @@ agent_executor = AgentExecutor(
     handle_parsing_errors=True,
     max_iterations=5
 )
+logger.info("Agent executor initialized and ready")

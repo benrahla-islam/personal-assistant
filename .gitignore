@@ -14,5 +14,9 @@ wheels/
 
 # Logs
 session_name.session
+
+# VSCode settings
 .vscode/mcp.json
-session_name.session
+
+# Development logs
+development.log

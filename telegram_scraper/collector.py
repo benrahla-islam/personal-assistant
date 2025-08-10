@@ -11,12 +11,10 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Configure logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+# Set up colored logging
+from config import setup_development_logging, get_logger
+setup_development_logging()
+logger = get_logger(__name__)
 
 class TelethonChannelCollector:
     def __init__(self):

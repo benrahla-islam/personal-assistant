@@ -12,22 +12,31 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from agent.main import agent_executor
+from config import setup_development_logging, get_logger
+
+# Set up colored logging
+setup_development_logging()
+logger = get_logger(__name__)
 
 def test_agent():
     """Test the agent with a simple query"""
     try:
         # Test basic functionality
-        print("Testing LangChain agent...")
+        logger.info("Testing LangChain agent...")
         
         # Test a simple question
+        logger.debug("Sending test query to agent")
         response = agent_executor.invoke({"input": "Hello, what are you capable of?"})
-        print("Agent Response:", response.get("output", "No output received"))
+        
+        agent_output = response.get("output", "No output received")
+        logger.info("Agent Response received successfully")
+        print("Agent Response:", agent_output)
         
         print("\n" + "="*50)
-        print("Agent successfully migrated to LangChain!")
+        logger.info("Agent successfully tested with colored logging!")
         
     except Exception as e:
-        print(f"Error testing agent: {e}")
+        logger.error(f"Error testing agent: {e}", exc_info=True)
         import traceback
         traceback.print_exc()
 

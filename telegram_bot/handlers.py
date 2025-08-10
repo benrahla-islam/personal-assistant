@@ -2,12 +2,11 @@ from telegram import Update
 from telegram.ext import ContextTypes
 import logging
 
-# Enable logging first
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+# Set up colored logging
+from config import setup_development_logging, get_logger
+
+setup_development_logging()
+logger = get_logger(__name__)
 
 # Import agent with logging
 try:

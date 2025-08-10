@@ -5,16 +5,14 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from dotenv import load_dotenv
 
 from .handlers import start, help_command, info_command, echo_command, caps_command, echo_message, error_handler
+from config import setup_development_logging, get_logger
 
 # Load environment variables
 load_dotenv()
 
-# Enable logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+# Set up colored logging
+setup_development_logging()
+logger = get_logger(__name__)
 
 # Bot token - you'll need to get this from BotFather
 BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
