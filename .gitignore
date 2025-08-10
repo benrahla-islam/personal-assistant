@@ -11,4 +11,8 @@ wheels/
 
 # environment variables
 .env
+
+# Logs
+session_name.session
+.vscode/mcp.json
 session_name.session
