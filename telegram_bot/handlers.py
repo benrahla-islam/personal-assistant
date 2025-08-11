@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 import logging
-
+from datetime import datetime, timezone, timedelta
 # Set up colored logging
 from config import setup_development_logging, get_logger
 
@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 # Import agent with logging
 try:
     logger.info("Importing agent module...")
-    from agent import agent
+    from agent import agent_executor as agent
     logger.info(f"Agent imported successfully. Type: {type(agent)}")
     logger.info(f"Agent attributes: {[attr for attr in dir(agent) if not attr.startswith('_')]}")
 except Exception as e:
@@ -80,6 +80,7 @@ async def echo_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     """Process user message with the agent."""
     user_message = update.message.text
     user_id = update.effective_user.id
+    chat_id = update.effective_chat.id
     
     logger.info(f"Processing message from user {user_id}: '{user_message[:100]}...'")
     
@@ -96,19 +97,55 @@ async def echo_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         thinking_message = await update.message.reply_text("🤔 Thinking...")
         logger.debug(f"Sent thinking message to user {user_id}")
         
-        # Run the agent asynchronously (workflow agents need async calls)
+        # Run the agent using the modern LangChain API
         agent_response = None
         try:
-            logger.debug(f"Attempting sync agent.run() for user {user_id}")
-            # For FunctionAgent (workflow-based), we need to handle the WorkflowHandler properly
-            workflow_handler = agent.run(user_message)
-            logger.debug(f"Got workflow handler: {type(workflow_handler)}")
-            
-            # Wait for the workflow to complete and get the result
-            agent_response = await workflow_handler
-            logger.info(f"Agent workflow completed for user {user_id}")
+            logger.debug(f"Attempting agent.invoke() for user {user_id}")
+            # Use the modern invoke method with proper input format for ReAct agents
+            # Use UTC+1 timezone (Central European Time)
+            utc_plus_1 = timezone(timedelta(hours=1))
+            current_time = datetime.now(utc_plus_1)
+            prompt = f"Current time: {current_time.strftime('%Y-%m-%d %H:%M:%S')} UTC+1 (Central European Time). From chat_id: {chat_id}, the user asked: {user_message}"
+            agent_response = agent.invoke({
+                "input": prompt
+            })
+            logger.debug(f"Got agent response: {type(agent_response)}")
+            logger.info(f"Agent invoke completed for user {user_id}")
             
         except Exception as agent_error:
+            # Handle specific OutputParserException
+            if "Could not parse LLM output" in str(agent_error):
+                logger.warning(f"LLM output parsing failed for user {user_id}, trying to extract message from error")
+                error_text = str(agent_error)
+                # Try to extract the actual LLM response from the error message
+                if "`" in error_text:
+                    start_idx = error_text.find("`") + 1
+                    end_idx = error_text.rfind("`")
+                    if start_idx > 0 and end_idx > start_idx:
+                        extracted_response = error_text[start_idx:end_idx]
+                        logger.debug(f"Extracted LLM response from error: {extracted_response[:100]}...")
+                        # Use the extracted response as a fallback
+                        response_text = extracted_response
+                        logger.info(f"Using extracted response for user {user_id}")
+                        # Skip to sending the response
+                        logger.info(f"Agent response preview: '{response_text[:200]}...'")
+                        # Continue with response processing...
+                        original_length = len(response_text)
+                        if len(response_text) > 4000:
+                            response_text = response_text[:4000] + "... (message truncated)"
+                            logger.warning(f"Response truncated from {original_length} to 4000 characters")
+                        
+                        # Edit the thinking message with the actual response
+                        logger.debug(f"Sending extracted response to user {user_id}")
+                        try:
+                            await thinking_message.edit_text(response_text, parse_mode='Markdown')
+                            logger.info(f"Successfully sent extracted response to user {user_id}")
+                        except Exception as format_error:
+                            logger.warning(f"Markdown formatting failed, sending as plain text: {format_error}")
+                            await thinking_message.edit_text(response_text)
+                            logger.info(f"Successfully sent plain text response to user {user_id}")
+                        return
+            
             logger.error(f"Agent call failed for user {user_id}: {agent_error}")
             raise agent_error
         
@@ -116,17 +153,74 @@ async def echo_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         logger.debug(f"Agent response type: {type(agent_response)}")
         logger.debug(f"Agent response attributes: {dir(agent_response)}")
         
-        # Extract the response text from the agent response
+        # Extract and format the response text from the agent response
         response_text = None
-        if hasattr(agent_response, 'response'):
+        
+        # Handle AgentFinish (final response)
+        if hasattr(agent_response, 'return_values') and hasattr(agent_response, 'log'):
+            logger.debug("Processing AgentFinish response")
+            if isinstance(agent_response.return_values, dict) and 'output' in agent_response.return_values:
+                response_text = agent_response.return_values['output']
+                logger.debug(f"Extracted clean output from AgentFinish: {len(response_text)} chars")
+            else:
+                response_text = str(agent_response.return_values)
+                logger.debug(f"Extracted return_values as string: {len(response_text)} chars")
+        
+        # Handle AgentAction (tool execution request)
+        elif hasattr(agent_response, 'tool') and hasattr(agent_response, 'tool_input'):
+            # logger.debug("Processing AgentAction response")
+            # tool_name = agent_response.tool
+            # tool_input = agent_response.tool_input
+            
+            # # Format different tool responses
+            # if tool_name == 'schedule_task':
+            #     if isinstance(tool_input, str):
+            #         import json
+            #         try:
+            #             tool_data = json.loads(tool_input)
+            #             task_name = tool_data.get('task_name', 'Scheduled Task')
+            #             prompt = tool_data.get('prompt', 'Task reminder')
+            #             run_at = tool_data.get('run_at', 'Unknown time')
+            #             response_text = f"✅ **Task Scheduled Successfully!**\n\n" \
+            #                         f"📝 **Task:** {task_name}\n" \
+            #                         f"💬 **Reminder:** {prompt}\n" \
+            #                         f"⏰ **Scheduled for:** {run_at}\n\n" \
+            #                         f"I'll remind you when it's time!"
+            #         except json.JSONDecodeError:
+            #             response_text = f"⚙️ Scheduling task with: {tool_input}"
+            #     else:
+            #         response_text = f"⚙️ Scheduling task with: {tool_input}"
+            
+            # elif tool_name == 'telegram_scraper':
+            #     response_text = f"🔍 **Searching Telegram channels...**\n\n" \
+            #                 f"I'm looking for the information you requested. This may take a moment."
+            
+            # elif tool_name == 'telegram_conversation_sender':
+            #     response_text = f"📤 **Sending message to Telegram...**\n\n" \
+            #                 f"Your message is being sent."
+            
+            # else:
+            #     # Generic tool execution message
+            #     response_text = f"🛠️ **Executing {tool_name}...**\n\n" \
+            #                 f"Working on your request with the following parameters:\n" \
+            #                 f"```\n{tool_input}\n```"
+            
+            # logger.debug(f"Formatted AgentAction response: {len(response_text)} chars")
+            response_text = agent_response
+        
+        # Fallback extraction methods
+        elif isinstance(agent_response, dict) and 'output' in agent_response:
+            response_text = str(agent_response['output'])
+            logger.debug(f"Extracted response from ['output'] key: {len(response_text)} chars")
+        elif hasattr(agent_response, 'content'):
+            response_text = str(agent_response.content)
+            logger.debug(f"Extracted response from .content attribute: {len(response_text)} chars")
+        elif hasattr(agent_response, 'response'):
             response_text = str(agent_response.response)
             logger.debug(f"Extracted response from .response attribute: {len(response_text)} chars")
         elif hasattr(agent_response, 'text'):
             response_text = str(agent_response.text)
             logger.debug(f"Extracted response from .text attribute: {len(response_text)} chars")
-        elif hasattr(agent_response, 'content'):
-            response_text = str(agent_response.content)
-            logger.debug(f"Extracted response from .content attribute: {len(response_text)} chars")
         elif hasattr(agent_response, 'message'):
             response_text = str(agent_response.message)
             logger.debug(f"Extracted response from .message attribute: {len(response_text)} chars")
@@ -145,8 +239,15 @@ async def echo_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         
         # Edit the thinking message with the actual response
         logger.debug(f"Sending final response to user {user_id}")
-        await thinking_message.edit_text(response_text)
-        logger.info(f"Successfully sent response to user {user_id}")
+        try:
+            # Try to send with Markdown formatting first
+            await thinking_message.edit_text(response_text, parse_mode='Markdown')
+            logger.info(f"Successfully sent formatted response to user {user_id}")
+        except Exception as format_error:
+            logger.warning(f"Markdown formatting failed, sending as plain text: {format_error}")
+            # Fallback to plain text if Markdown fails
+            await thinking_message.edit_text(response_text)
+            logger.info(f"Successfully sent plain text response to user {user_id}")
         
     except Exception as e:
         logger.error(f"Error processing message with agent for user {user_id}: {e}", exc_info=True)

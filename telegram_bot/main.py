@@ -5,22 +5,20 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from dotenv import load_dotenv
 
 from .handlers import start, help_command, info_command, echo_command, caps_command, echo_message, error_handler
-from config import setup_development_logging, get_logger
+from config import setup_bot_logging, get_logger
 
 # Load environment variables
 load_dotenv()
 
-# Set up colored logging
-setup_development_logging()
+# Set up bot-specific logging with minimal third-party noise
+setup_bot_logging()
 logger = get_logger(__name__)
 
 # Bot token - you'll need to get this from BotFather
 BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 
-
-
-def main() -> None:
-    """Start the bot."""
+def create_application() -> Application:
+    """Create and configure the Telegram bot application."""
     if not BOT_TOKEN:
         print("Error: TELEGRAM_BOT_TOKEN not found in environment variables!")
         print("Please set your bot token in a .env file or environment variable.")
@@ -41,6 +39,12 @@ def main() -> None:
 
     # Register error handler
     application.add_error_handler(error_handler)
+
+    return application
+
+def main() -> None:
+    """Start the bot."""
+    application = create_application()
 
     print("Bot is starting...")
     print("Press Ctrl+C to stop the bot")

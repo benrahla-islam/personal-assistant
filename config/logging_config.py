@@ -66,22 +66,30 @@ import threading
 _logging_setup_lock = threading.Lock()
 _logging_is_configured = False
 
+def reset_logging_config():
+    """Reset the logging configuration flag to allow reconfiguration."""
+    global _logging_is_configured
+    with _logging_setup_lock:
+        _logging_is_configured = False
+
 def setup_logging(
     level: str = "INFO",
     log_to_file: bool = False,
     log_file_path: str = "app.log",
     use_colors: bool = True,
-    format_string: str = None
+    format_string: str = None,
+    third_party_level: str = "WARNING"
 ) -> None:
     """
     Set up centralized logging configuration with colors.
     
     Args:
-        level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        level: Logging level for our application (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         log_to_file: Whether to also log to a file
         log_file_path: Path to the log file
         use_colors: Whether to use colored output for console
         format_string: Custom format string
+        third_party_level: Logging level for third-party libraries
     """
     global _logging_is_configured
     with _logging_setup_lock:
@@ -90,6 +98,7 @@ def setup_logging(
 
         # Convert string level to logging constant
         log_level = getattr(logging, level.upper(), logging.INFO)
+        third_party_log_level = getattr(logging, third_party_level.upper(), logging.WARNING)
         
         # Default format
         if format_string is None:
@@ -124,6 +133,23 @@ def setup_logging(
         
         # Set root logger level
         root_logger.setLevel(log_level)
+        
+        # Set specific loggers for third-party libraries to reduce noise
+        third_party_loggers = [
+            'telegram',
+            'telegram.ext', 
+            'httpx',
+            'httpcore',
+            'httpcore.http11',
+            'httpcore.connection',
+            'apscheduler',
+            'urllib3'
+        ]
+        
+        for logger_name in third_party_loggers:
+            logger = logging.getLogger(logger_name)
+            logger.setLevel(third_party_log_level)
+        
         _logging_is_configured = True
 
 
@@ -144,10 +170,22 @@ def get_logger(name: str) -> logging.Logger:
 def setup_development_logging():
     """Set up logging for development environment."""
     setup_logging(
-        level="DEBUG",
+        level="INFO",
         log_to_file=True,
         log_file_path="development.log",
-        use_colors=True
+        use_colors=True,
+        third_party_level="WARNING"
+    )
+
+
+def setup_bot_logging():
+    """Set up logging specifically for Telegram bot with minimal third-party noise."""
+    setup_logging(
+        level="INFO",
+        log_to_file=True,
+        log_file_path="development.log",
+        use_colors=True,
+        third_party_level="ERROR"  # Even less noise for bot usage
     )
 
 

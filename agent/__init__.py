@@ -1,5 +1,6 @@
-from .main import agent
+from .main import agent, agent_executor
 
 __all__ = [
-    'agent'
+    'agent',
+    'agent_executor'
 ]
