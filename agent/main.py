@@ -7,6 +7,7 @@ import dotenv
 import os
 
 from .tool_regestery import register_tools
+from .custom_parser import JSONCapableReActOutputParser
 from config import setup_development_logging, get_logger
 
 # Set up colored logging
@@ -64,13 +65,14 @@ Question: {input}
 Thought: {agent_scratchpad}
 """)
 
-# Create the ReAct agent
+# Create the ReAct agent with custom output parser
 agent = create_react_agent(
     llm=llm,
     tools=tools,
-    prompt=react_prompt
+    prompt=react_prompt,
+    output_parser=JSONCapableReActOutputParser()
 )
-logger.info("Created ReAct agent successfully")
+logger.info("Created ReAct agent successfully with custom JSON parser")
 
 # Create the agent executor
 agent_executor = AgentExecutor(
