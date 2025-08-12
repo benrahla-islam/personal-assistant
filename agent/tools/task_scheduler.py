@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 class ScheduleTaskInput(BaseModel):
     """Input schema for scheduling a task."""
     prompt: str = Field(
-        description="The task/prompt to execute when the scheduled time arrives. Be specific about what you want the agent to do.",
+        description="The task/prompt to be sent back to you when the scheduled time arrives. Be specific about what you want the agent to do. You will read this message and decide what to do next. write a comprehensive plan for the task.   ",
         min_length=1,
         max_length=1000,
         example="Get latest news from Telegram channels and summarize"
@@ -110,6 +110,7 @@ async def run_scheduled_task(prompt: str, chat_id: str, task_id: str = None) -> 
     
     Args:
         prompt: The prompt to execute
+        chat_id: The chat ID where to send the response
         task_id: Optional task identifier for logging
     """
     try:
@@ -118,10 +119,20 @@ async def run_scheduled_task(prompt: str, chat_id: str, task_id: str = None) -> 
         # Avoid circular import by importing here
         from agent.main import agent_executor
         
+        # Get current time with UTC+1 timezone for context
+        current_time = datetime.now(timezone(timedelta(hours=1)))
+        
+        # Create a properly formatted prompt with timezone context
+        # This ensures the agent has the same context as when used interactively
+        formatted_prompt = f"""Current time: {current_time.strftime('%Y-%m-%d %H:%M:%S')} UTC+1 (Central European Time). 
+From chat_id: {chat_id}, scheduled task reminder: {prompt}
+
+IMPORTANT: If you need to schedule any tasks, use the same timezone (UTC+1) for the scheduled time."""
+        
         # Use the modern invoke method in a thread to avoid blocking the scheduler
         # The agent can call tools during execution - this runs the full workflow
         result = await asyncio.to_thread(
-            agent_executor.invoke, {"input": prompt}
+            agent_executor.invoke, {"input": formatted_prompt}
         )
         
         output = result.get("output", "No output received")
@@ -136,15 +147,25 @@ async def run_scheduled_task(prompt: str, chat_id: str, task_id: str = None) -> 
 @tool(args_schema=ScheduleTaskInput)
 def schedule_task(prompt: str, run_at: str, chat_id: str, task_name: str = "Unnamed Task") -> str:
     """
-    Schedule a task to run at a specific time.
+    Schedule a reminder or task for the user at a specific future time.
     
-    This tool will validate the input format and ensure the scheduled time is in the future.
-    The scheduled task can call other tools like telegram scraper, other scheduling tasks, etc.
+    When the scheduled time arrives, YOU (Jeffry) will receive the prompt as a message and can respond to the user 
+    or take actions using your tools. Think of this as setting a reminder that will ping you to do something later.
+    
+    Use this when users ask to:
+    - "Remind me to..." 
+    - "Schedule a task for..."
+    - "Set up a reminder..."
+    - "Tell me to do X at Y time"
+    
+    The prompt should be clear instructions for what you should do when the time comes.
+    Always use UTC+1 timezone for the run_at time.
     
     Args:
-        prompt: The task/prompt to execute when the scheduled time arrives
-        run_at: When to run the task (YYYY-MM-DD HH:MM:SS or ISO format)
-        task_name: Optional name for the task (for identification and logging)
+        prompt: Clear instructions for what you should do when the scheduled time arrives (what to remind the user about or what action to take)
+        run_at: When to run the task in format 'YYYY-MM-DD HH:MM:SS' (always use UTC+1 timezone)
+        chat_id: The user's chat ID (you should know this from context)
+        task_name: Short descriptive name for the task (optional, defaults to "Unnamed Task")
         
     Returns:
         Success message with task ID or error message

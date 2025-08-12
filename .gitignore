@@ -20,3 +20,5 @@ session_name.session
 
 # Development logs
 development.log
+debug_agent_flow.py
+test_scheduling_fix.py
