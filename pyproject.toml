@@ -13,4 +13,6 @@ dependencies = [
     "python-dotenv>=1.1.1",
     "python-telegram-bot>=22.3",
     "telethon>=1.40.0",
+    "duckduckgo-search>=8.1.1",
+    "wikipedia>=1.4.0",
 ]
