@@ -1,5 +1,6 @@
 from .tools.telegram_scraper import get_latest_messages
 from .tools.task_scheduler import schedule_task, list_scheduled_tasks, cancel_scheduled_task
+from .tools.extra_tools import search_tool
 
 
 def register_tools(category = 'all'):
@@ -8,7 +9,8 @@ def register_tools(category = 'all'):
             get_latest_messages,
             schedule_task,
             list_scheduled_tasks,
-            cancel_scheduled_task
+            cancel_scheduled_task,
+            search_tool
         ]
     elif category == 'telegram':
         return [get_latest_messages]
@@ -19,5 +21,6 @@ def register_tools(category = 'all'):
             get_latest_messages,
             schedule_task,
             list_scheduled_tasks,
-            cancel_scheduled_task
+            cancel_scheduled_task,
+            search_tool
         ]
