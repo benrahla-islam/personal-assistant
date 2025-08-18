@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 # Import agent with logging
 try:
     logger.info("Importing agent module...")
-    from agent import agent_executor as agent
+    from agent.main_agent import agent_executor as agent
     logger.info(f"Agent imported successfully. Type: {type(agent)}")
     logger.info(f"Agent attributes: {[attr for attr in dir(agent) if not attr.startswith('_')]}")
 except Exception as e:

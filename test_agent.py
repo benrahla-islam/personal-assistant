@@ -11,7 +11,7 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from agent.main import agent_executor
+from agent.main_agent.main import agent_executor
 from config import setup_development_logging, get_logger
 
 # Set up colored logging

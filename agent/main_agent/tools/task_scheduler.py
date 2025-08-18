@@ -117,7 +117,7 @@ async def run_scheduled_task(prompt: str, chat_id: str, task_id: str = None) -> 
         logger.info(f"Executing scheduled task{f' ({task_id})' if task_id else ''}: {prompt[:50]}...")
         
         # Avoid circular import by importing here
-        from agent.main import agent_executor
+        from agent.main_agent.main import agent_executor
         
         # Get current time with UTC+1 timezone for context
         current_time = datetime.now(timezone(timedelta(hours=1)))
