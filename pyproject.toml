@@ -15,4 +15,6 @@ dependencies = [
     "telethon>=1.40.0",
     "duckduckgo-search>=8.1.1",
     "wikipedia>=1.4.0",
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
 ]
