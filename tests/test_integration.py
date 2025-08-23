@@ -12,7 +12,7 @@ class TestEndToEndWorkflow:
     @patch('agent.tools.extra_tools.DuckDuckGoSearchRun')
     def test_search_and_respond_workflow(self, mock_search):
         """Test complete workflow: user asks question → agent searches → responds."""
-        from agent.main_agent.main import agent_executor
+        from agent.main import agent_executor
         
         # Mock search results
         mock_search_instance = MagicMock()
@@ -36,7 +36,7 @@ class TestEndToEndWorkflow:
     @patch.dict(os.environ, {'TELEGRAM_BOT_TOKEN': 'test_token'})
     def test_schedule_and_list_workflow(self):
         """Test workflow: schedule task → list tasks → verify task appears."""
-        from agent.main_agent.main import agent_executor
+        from agent.main import agent_executor
         
         # Clear any existing tasks first
         from agent.tools.task_scheduler import get_scheduler
@@ -64,7 +64,7 @@ class TestEndToEndWorkflow:
     @patch.dict(os.environ, {'TELEGRAM_BOT_TOKEN': 'test_token'})
     def test_conversation_memory_workflow(self):
         """Test that conversation memory works across multiple interactions."""
-        from agent.main_agent.main import agent_executor
+        from agent.main import agent_executor
         
         # First interaction - provide information
         response1 = agent_executor.invoke({
@@ -83,7 +83,7 @@ class TestEndToEndWorkflow:
     @patch('agent.tools.telegram_scraper.TelethonChannelCollector')
     def test_telegram_scraping_workflow(self, mock_collector_class):
         """Test workflow: user asks for news → agent scrapes Telegram → provides summary."""
-        from agent.main_agent.main import agent_executor
+        from agent.main import agent_executor
         
         # Mock telegram scraper
         mock_instance = MagicMock()
@@ -110,7 +110,7 @@ class TestEndToEndWorkflow:
     @patch.dict(os.environ, {'TELEGRAM_BOT_TOKEN': 'test_token'})
     def test_error_recovery_workflow(self):
         """Test that system recovers gracefully from errors."""
-        from agent.main_agent.main import agent_executor
+        from agent.main import agent_executor
         
         # Try to schedule a task with invalid date (should handle gracefully)
         response = agent_executor.invoke({
@@ -132,7 +132,7 @@ class TestEndToEndWorkflow:
     @patch.dict(os.environ, {'TELEGRAM_BOT_TOKEN': 'test_token'})
     def test_multi_tool_workflow(self):
         """Test workflow that might use multiple tools."""
-        from agent.main_agent.main import agent_executor
+        from agent.main import agent_executor
         
         # Ask for something that might require both search and scheduling
         response = agent_executor.invoke({
@@ -158,7 +158,7 @@ class TestSystemResilience:
     @patch.dict(os.environ, {'TELEGRAM_BOT_TOKEN': 'test_token'})
     def test_agent_with_invalid_tool_input(self):
         """Test agent handles invalid tool inputs gracefully."""
-        from agent.main_agent.main import agent_executor
+        from agent.main import agent_executor
         
         # This should not crash the system
         response = agent_executor.invoke({
@@ -172,7 +172,7 @@ class TestSystemResilience:
     @patch.dict(os.environ, {'TELEGRAM_BOT_TOKEN': 'test_token'})
     def test_agent_with_very_long_input(self):
         """Test agent handles very long inputs."""
-        from agent.main_agent.main import agent_executor
+        from agent.main import agent_executor
         
         # Create a very long input
         long_input = "Please help me with this task: " + "A" * 1000
@@ -186,7 +186,7 @@ class TestSystemResilience:
     @patch.dict(os.environ, {'TELEGRAM_BOT_TOKEN': 'test_token'})
     def test_agent_with_empty_input(self):
         """Test agent handles empty or minimal input."""
-        from agent.main_agent.main import agent_executor
+        from agent.main import agent_executor
         
         response = agent_executor.invoke({"input": ""})
         

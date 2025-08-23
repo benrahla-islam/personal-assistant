@@ -1,9 +1,9 @@
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 import os
-from agent.main_agent.main import agent_executor, agent
-from agent.main_agent.custom_parser import JSONCapableReActOutputParser
-from agent.main_agent.tool_regestery import register_tools
+from agent.main import agent_executor, agent
+from agent.custom_parser import JSONCapableReActOutputParser
+from agent.tools.tool_regestery import register_tools
 
 
 class TestMainAgent:
