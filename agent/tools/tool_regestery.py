@@ -1,6 +1,6 @@
-from .tools.telegram_scraper import get_latest_messages
-from .tools.task_scheduler import schedule_task, list_scheduled_tasks, cancel_scheduled_task
-from .tools.extra_tools import search_tool, wiki_search_tool
+from .telegram_scraper import get_latest_messages
+from .task_scheduler import schedule_task, list_scheduled_tasks, cancel_scheduled_task
+from .extra_tools import search_tool, wiki_search_tool
 
 
 def register_tools(category = 'all'):
