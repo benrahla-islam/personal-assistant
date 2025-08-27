@@ -4,7 +4,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from dotenv import load_dotenv
 
-from .handlers import start, help_command, info_command, echo_command, caps_command, echo_message, error_handler
+from .handlers import echo_message, error_handler, voice_message_handler
 from config import setup_bot_logging, get_logger
 
 # Load environment variables
@@ -27,16 +27,9 @@ def create_application() -> Application:
     # Create the Application
     application = Application.builder().token(BOT_TOKEN).build()
 
-    # Register command handlers
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("info", info_command))
-    application.add_handler(CommandHandler("echo", echo_command))
-    application.add_handler(CommandHandler("caps", caps_command))
-
     # Register message handler for non-command messages
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo_message))
-
+    application.add_handler(MessageHandler(filters.VOICE, voice_message_handler))  # Handle voice messages
     # Register error handler
     application.add_error_handler(error_handler)
 
