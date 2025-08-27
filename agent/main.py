@@ -1,12 +1,11 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.agents import create_structured_chat_agent, AgentExecutor
-from langchain.memory import ConversationSummaryBufferMemory
+from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain.prompts import PromptTemplate
 import dotenv
 import os
 
 from .tools.tool_regestery import register_tools
-from .custom_parser import JSONCapableMRKLOutputParser
 from config import setup_development_logging, get_logger
 
 # Set up colored logging
@@ -36,14 +35,9 @@ Available tool tips:
 )
 logger.info("Initialized Gemini LLM with system instruction and temperature 0.1")
 
-# Create memory for conversation history (needs LLM for summarization)
-memory = ConversationSummaryBufferMemory(
-    llm=llm,
-    memory_key="chat_history",
-    return_messages=True,
-    max_token_limit=10000,
-    k=10  # Keep last 10 conversation turns
-)
+# Create message history for conversation context
+chat_history = ChatMessageHistory()
+logger.info("Initialized chat message history")
 
 # Create a structured chat prompt template (MRKL-style reasoning)
 mrkl_prompt = PromptTemplate.from_template("""
@@ -88,14 +82,11 @@ Action:
 }}
 ```
 
-Conversation history:
-{chat_history}
-
 Question: {input}
 Thought: {agent_scratchpad}
 """)
 
-# Create the structured chat agent (MRKL-style)
+# Create the structured chat agent with custom parser
 agent = create_structured_chat_agent(
     llm=llm,
     tools=tools,
@@ -103,13 +94,13 @@ agent = create_structured_chat_agent(
 )
 logger.info("Created structured chat agent (MRKL-style) successfully")
 
-# Create the agent executor
+# Create the agent executor with custom parser
 agent_executor = AgentExecutor(
     agent=agent,
     tools=tools,
-    memory=memory,
     verbose=True,
     handle_parsing_errors=True,
-    max_iterations=5
+    max_iterations=5,
+    return_intermediate_steps=False
 )
 logger.info("Agent executor initialized and ready")
