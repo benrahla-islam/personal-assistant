@@ -11,7 +11,7 @@ from ..specialized_agents.planner_agent import (
     create_planner_tool,
     create_react_planner_tool
 )
-from .database_tools import get_database_tools
+from .planner_tools.database_tools import get_database_tools
 
 
 def register_tools(category = 'all'):
