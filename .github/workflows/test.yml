@@ -1,0 +1,131 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+
+    - name: Install dependencies
+      run: |
+        uv sync
+
+    - name: Run unit tests
+      run: |
+        uv run pytest tests/unit/ -v --tb=short -m "unit or not slow"
+      env:
+        TESTING: true
+
+    - name: Run integration tests
+      run: |
+        uv run pytest tests/integration/ -v --tb=short -m "integration or not slow"
+      env:
+        TESTING: true
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN || 'test_token_placeholder' }}
+
+    - name: Run e2e tests
+      run: |
+        uv run pytest tests/e2e/ -v --tb=short -m "e2e or not slow"
+      env:
+        TESTING: true
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN || 'test_token_placeholder' }}
+
+    - name: Run all tests with coverage
+      run: |
+        uv run pytest tests/ --cov=. --cov-report=xml --cov-report=term-missing
+      env:
+        TESTING: true
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN || 'test_token_placeholder' }}
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.12"
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Install dependencies
+      run: |
+        uv sync
+        uv add --dev ruff black mypy
+    
+    - name: Run ruff (linting)
+      run: |
+        uv run ruff check .
+    
+    - name: Run black (formatting check)
+      run: |
+        uv run black --check .
+    
+    - name: Run mypy (type checking)
+      run: |
+        uv run mypy --ignore-missing-imports agent/ database/ config/
+      continue-on-error: true  # Type checking can be strict initially
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.12"
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Install dependencies
+      run: |
+        uv sync
+        uv add --dev bandit safety
+    
+    - name: Run bandit (security linting)
+      run: |
+        uv run bandit -r agent/ database/ config/ -f json -o bandit-report.json
+      continue-on-error: true
+    
+    - name: Run safety (dependency vulnerability check)
+      run: |
+        uv run safety check --json --output safety-report.json
+      continue-on-error: true
