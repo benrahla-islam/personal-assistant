@@ -42,18 +42,3 @@ def create_planner_tool():
         tool_description="Planning and task management agent"
     )
 
-# Backwards compatibility
-def create_react_planner_tool():
-    return create_planner_tool()
-
-def create_react_agent_tool():
-    return create_planner_tool()
-
-async def create_react_agent_tool_async():
-    return create_agent_tool(
-        tools=PLANNING_TOOLS,
-        system_prompt=PLANNING_PROMPT,
-        tool_name="planner_agent",
-        tool_description="Planning and task management agent",
-        async_mode=True
-    )
