@@ -23,7 +23,7 @@ def _get_todoist_api() -> TodoistAPI:
 
 def todoist_add_tasks_tool() -> Tool:
     """Tool for adding multiple tasks to Todoist"""
-    async def add_multiple_tasks(tasks_input: str) -> str:
+    def add_multiple_tasks(tasks_input: str) -> str:
         """
         Add multiple tasks to Todoist
         
@@ -123,7 +123,7 @@ def todoist_add_tasks_tool() -> Tool:
 
 def todoist_delete_task_tool() -> Tool:
     """Tool for deleting a task from Todoist"""
-    async def delete_task(task_id: str) -> str:
+    def delete_task(task_id: str) -> str:
         """
         Delete a task from Todoist
         
@@ -163,7 +163,7 @@ def todoist_delete_task_tool() -> Tool:
 
 def todoist_update_task_tool() -> Tool:
     """Tool for updating an existing task in Todoist"""
-    async def update_task(update_data: str) -> str:
+    def update_task(update_data: str) -> str:
         """
         Update an existing task in Todoist
         
@@ -233,7 +233,7 @@ def todoist_update_task_tool() -> Tool:
 
 def todoist_get_tasks_by_date_tool() -> Tool:
     """Tool for getting tasks for a specific date from Todoist"""
-    async def get_tasks_by_date(date_filter: str) -> str:
+    def get_tasks_by_date(date_filter: str) -> str:
         """
         Get tasks for a specific date from Todoist
         

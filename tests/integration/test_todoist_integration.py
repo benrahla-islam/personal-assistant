@@ -4,7 +4,6 @@ Test script for Todoist tools
 """
 
 import os
-import asyncio
 from agent.tools.planner_tools.todoist_tool import (
     todoist_add_tasks_tool,
     todoist_delete_task_tool,
@@ -12,7 +11,7 @@ from agent.tools.planner_tools.todoist_tool import (
     todoist_get_tasks_by_date_tool
 )
 
-async def test_todoist_tools():
+def test_todoist_tools():
     """Test all Todoist tools"""
     
     # Check if API token is set
@@ -56,7 +55,7 @@ async def test_todoist_tools():
         print("\n🔄 Testing actual API calls...")
         
         # Test getting today's tasks
-        result = await get_tasks_tool.func("today")
+        result = get_tasks_tool.func("today")
         print(f"Today's tasks result: {result}")
         
     except Exception as e:
@@ -64,4 +63,4 @@ async def test_todoist_tools():
         print("This might be because the API token is invalid or there's a network issue.")
 
 if __name__ == "__main__":
-    asyncio.run(test_todoist_tools())
+    test_todoist_tools()
