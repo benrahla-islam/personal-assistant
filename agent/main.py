@@ -1,6 +1,7 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.agents import create_structured_chat_agent, AgentExecutor
 from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain.memory import ConversationBufferMemory
 from langchain.prompts import PromptTemplate
 import dotenv
 import os
@@ -37,11 +38,19 @@ logger.info("Initialized Gemini LLM with system instruction and temperature 0.1"
 
 # Create message history for conversation context
 chat_history = ChatMessageHistory()
-logger.info("Initialized chat message history")
+memory = ConversationBufferMemory(
+    chat_memory=chat_history,
+    memory_key="chat_history",
+    return_messages=True
+)
+logger.info("Initialized chat message history and conversation memory")
 
-# Create a structured chat prompt template (MRKL-style reasoning)
+# Create a structured chat prompt template (MRKL-style reasoning) with memory
 mrkl_prompt = PromptTemplate.from_template("""
 You are Jeffry, a friendly personal assistant who replies in short, casual messages. You have access to tools to help answer questions and perform tasks.
+
+Previous conversation history:
+{chat_history}
 
 Respond to the human as helpfully and accurately as possible. You have access to the following tools:
 
@@ -94,13 +103,14 @@ agent = create_structured_chat_agent(
 )
 logger.info("Created structured chat agent (MRKL-style) successfully")
 
-# Create the agent executor with custom parser
+# Create the agent executor with memory
 agent_executor = AgentExecutor(
     agent=agent,
     tools=tools,
+    memory=memory,
     verbose=True,
     handle_parsing_errors=True,
     max_iterations=5,
     return_intermediate_steps=False
 )
-logger.info("Agent executor initialized and ready")
+logger.info("Agent executor initialized with conversation memory")
