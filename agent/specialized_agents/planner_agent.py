@@ -40,15 +40,16 @@ PLANNING_PROMPT = """You are a planning and task management assistant. Help user
 Be practical and actionable. Provide clear next steps."""
 
 # Create planning agent
-def create_planner_agent():
-    return Agent(tools=PLANNING_TOOLS, system_prompt=PLANNING_PROMPT)
+def create_planner_agent(shared_llm=None):
+    return Agent(tools=PLANNING_TOOLS, system_prompt=PLANNING_PROMPT, shared_llm=shared_llm)
 
 # Create planning tool with concise description
-def create_planner_tool():
+def create_planner_tool(shared_llm=None):
     return create_agent_tool(
         tools=PLANNING_TOOLS,
         system_prompt=PLANNING_PROMPT,
         tool_name="planner_agent",
-        tool_description="Planning and task management specialist. Use for: task organization, project planning, scheduling, habit tracking, productivity optimization, goal setting. Has Todoist integration, scheduling tools, and habit/productivity database. Call when users need help organizing tasks, planning projects, building habits, or managing time."
+        tool_description="Planning and task management specialist. Use for: task organization, project planning, scheduling, habit tracking, productivity optimization, goal setting. Has Todoist integration, scheduling tools, and habit/productivity database. Call when users need help organizing tasks, planning projects, building habits, or managing time.",
+        shared_llm=shared_llm
     )
 

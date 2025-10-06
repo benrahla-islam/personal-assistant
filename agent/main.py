@@ -15,9 +15,6 @@ logger = get_logger(__name__)
 
 dotenv.load_dotenv()
 
-tools = register_tools()
-logger.info(f"Registered {len(tools)} tools for the agent")
-
 # System prompt for the agent
 SYSTEM_PROMPT = """You are Jeffry, a friendly personal assistant who replies in short, casual messages like a real person texting — no long essays, no formal tone. 
 Keep responses natural, clear, and to the point.
@@ -30,24 +27,47 @@ Available tool tips:
 - list_scheduled_tasks: Show all pending scheduled tasks
 - cancel_scheduled_task: Cancel a task by its ID"""
 
-# Initialize the LLM with system instruction built-in
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash-exp",
+# Initialize the main LLM for the primary agent
+main_llm = ChatGoogleGenerativeAI(
+    model="gemini-2.5-flash",  # Best price-performance, optimized for agentic use cases
     google_api_key=os.getenv("GOOGLE_API_KEY"),
     temperature=0.1,
-    system_instruction=SYSTEM_PROMPT  # This is the Gemini-specific way to set system prompt
+    system_instruction=SYSTEM_PROMPT,  # This is the Gemini-specific way to set system prompt
+    # Add rate limiting configurations
+    request_timeout=30,  # 30 second timeout
+    max_retries=2,  # Limit retries to avoid burning through quota
 )
-logger.info("Initialized Gemini LLM with system instruction")
+logger.info("Initialized main Gemini LLM instance (API key 1)")
+
+# Initialize secondary LLM for specialized agents to distribute load
+agents_api_key = os.getenv("GOOGLE_API_KEY_AGENTS")
+if agents_api_key:
+    agents_llm = ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash",
+        google_api_key=agents_api_key,
+        temperature=0.1,
+        request_timeout=30,
+        max_retries=2,
+    )
+    logger.info("Initialized secondary Gemini LLM instance for specialized agents (API key 2)")
+else:
+    agents_llm = main_llm
+    logger.warning("No secondary API key found, specialized agents will use main LLM (shared quota)")
+logger.info("Initialized specialized agents LLM with secondary API key")
+
+# Register tools with specialized agents using secondary LLM
+tools = register_tools(shared_llm=agents_llm)
+logger.info(f"Registered {len(tools)} tools for the agent with distributed API keys")
 
 # Create persistent memory with SQLite checkpoint
 checkpoint_db_path = Path("agent_memory.db")
 memory = MemorySaver()  # Use in-memory for now, can switch to SqliteSaver later
 logger.info("Initialized persistent memory system")
 
-# Create the modern LangGraph agent with memory
+# Create the modern LangGraph agent with memory using main LLM
 agent = create_react_agent(
-    model=llm,
-    tools=tools,
+    model=main_llm,  # Main agent uses primary API key
+    tools=tools,     # Tools use secondary API key (agents_llm)
     checkpointer=memory
 )
 logger.info("Created LangGraph ReAct agent with persistent memory")

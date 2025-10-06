@@ -16,7 +16,7 @@ from ..specialized_agents.news_agent import (
 from .planner_tools.database_tools import get_database_tools
 
 
-def register_tools(category = 'all'):
+def register_tools(category = 'all', shared_llm=None):
     if category == 'all':
         return [
             schedule_task,
@@ -24,8 +24,8 @@ def register_tools(category = 'all'):
             cancel_scheduled_task,
             search_tool,
             wiki_search_tool,
-            create_planner_tool(),
-            create_news_tool(),
+            create_planner_tool(shared_llm),
+            create_news_tool(shared_llm),
         ] + get_database_tools()
     elif category == 'telegram':
         return [get_latest_messages]
@@ -42,7 +42,7 @@ def register_tools(category = 'all'):
         ]
     elif category == 'planning':
         return [
-            create_planner_tool(),
+            create_planner_tool(shared_llm),
             todoist_add_tasks_tool(),
             todoist_delete_task_tool(),
             todoist_update_task_tool(),
@@ -53,7 +53,12 @@ def register_tools(category = 'all'):
         ] + get_database_tools()
     elif category == 'agents':
         return [
-            create_planner_tool(),
+            create_planner_tool(shared_llm),
+            create_news_tool(shared_llm),
+        ]
+    elif category == 'news':
+        return [
+            create_news_tool(shared_llm),
         ]
     else:
         return [
@@ -67,5 +72,6 @@ def register_tools(category = 'all'):
             todoist_delete_task_tool(),
             todoist_update_task_tool(),
             todoist_get_tasks_by_date_tool(),
-            create_planner_tool(),
+            create_planner_tool(shared_llm),
+            create_news_tool(shared_llm),
         ] + get_database_tools()

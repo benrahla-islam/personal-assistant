@@ -23,20 +23,27 @@ class Agent:
         self, 
         tools: Optional[List[Tool]] = None,
         system_prompt: str = "You are a helpful AI assistant.",
-        model: str = "gemini-2.0-flash-exp",
-        temperature: float = 0.1
+        model: str = "gemini-2.5-flash",
+        temperature: float = 0.1,
+        shared_llm=None
     ):
         self.tools = tools or []
         self.system_prompt = system_prompt
         self.model = model
         self.temperature = temperature
         
-        # Initialize LLM
-        self.llm = ChatGoogleGenerativeAI(
-            model=self.model,
-            google_api_key=os.getenv("GOOGLE_API_KEY"),
-            temperature=self.temperature
-        )
+        # Use shared LLM if provided, otherwise create new one
+        if shared_llm is not None:
+            self.llm = shared_llm
+            logger.info("Using shared LLM instance for specialized agents")
+        else:
+            # Initialize LLM
+            self.llm = ChatGoogleGenerativeAI(
+                model=self.model,
+                google_api_key=os.getenv("GOOGLE_API_KEY"),
+                temperature=self.temperature
+            )
+            logger.info("Created new LLM instance with primary API key")
         
         # Initialize memory and agent
         self.memory = MemorySaver()
@@ -70,7 +77,8 @@ def create_agent_tool(
     tool_description: str,
     model: str = "gemini-2.0-flash-exp",
     temperature: float = 0.1,
-    async_mode: bool = False
+    async_mode: bool = False,
+    shared_llm=None
 ) -> Tool:
     """
     Create a tool from an agent with custom parameters.
@@ -83,12 +91,14 @@ def create_agent_tool(
         model: LLM model to use
         temperature: Response randomness
         async_mode: Use async or sync
+        shared_llm: Shared LLM instance to avoid quota issues
     """
     agent = Agent(
         tools=tools,
         system_prompt=system_prompt,
         model=model,
-        temperature=temperature
+        temperature=temperature,
+        shared_llm=shared_llm
     )
     
     if async_mode:

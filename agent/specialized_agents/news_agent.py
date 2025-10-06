@@ -29,14 +29,15 @@ Provide clear, structured output with:
 Be efficient but thorough. Focus on significance, accuracy, and readability."""
 
 # Create news agent
-def create_news_agent():
-    return Agent(tools=NEWS_TOOLS, system_prompt=NEWS_PROMPT)
+def create_news_agent(shared_llm=None):
+    return Agent(tools=NEWS_TOOLS, system_prompt=NEWS_PROMPT, shared_llm=shared_llm)
 
 # Create news tool
-def create_news_tool():
+def create_news_tool(shared_llm=None):
     return create_agent_tool(
         tools=NEWS_TOOLS,
         system_prompt=NEWS_PROMPT,
         tool_name="news_agent",
-        tool_description="Autonomous news processing agent that fetches, categorizes, and summarizes daily news from multiple sources"
+        tool_description="Autonomous news processing agent that fetches, categorizes, and summarizes daily news from multiple sources",
+        shared_llm=shared_llm
     )
