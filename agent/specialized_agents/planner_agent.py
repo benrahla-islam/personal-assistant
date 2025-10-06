@@ -39,6 +39,6 @@ def create_planner_tool():
         tools=PLANNING_TOOLS,
         system_prompt=PLANNING_PROMPT,
         tool_name="planner_agent",
-        tool_description="Planning and task management agent"
+        tool_description="this is a planning and task management assistant that helps users create, manage, and prioritize tasks using Todoist and scheduling tools"
     )
 

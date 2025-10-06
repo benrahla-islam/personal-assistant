@@ -5,7 +5,7 @@ Tools for interacting with Todoist app for task management
 import os
 import json
 from typing import List, Dict, Any, Optional
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from langchain.tools import Tool
 from dotenv import load_dotenv
 load_dotenv()
@@ -246,28 +246,96 @@ def todoist_get_tasks_by_date_tool() -> Tool:
         try:
             api = _get_todoist_api()
             
-            # Build filter based on date
-            if date_filter.lower() in ['today', 'tomorrow', 'overdue']:
-                filter_query = date_filter.lower()
+            # Get all tasks from Todoist
+            tasks_response = api.get_tasks()
+            
+            # Convert paginator to list if needed
+            if hasattr(tasks_response, '__iter__'):
+                # The paginator returns a list of lists, so we need to flatten it
+                paginated_result = list(tasks_response)
+                if paginated_result and isinstance(paginated_result[0], list):
+                    all_tasks = paginated_result[0]  # Get the actual tasks list
+                else:
+                    all_tasks = paginated_result
             else:
-                # Try to parse as date
+                all_tasks = tasks_response
+            
+            # Parse the date filter to determine what we're looking for
+            target_date = None
+            is_overdue = False
+            
+            if date_filter.lower() == 'today':
+                target_date = date.today()
+            elif date_filter.lower() == 'tomorrow':
+                target_date = date.today() + timedelta(days=1)
+            elif date_filter.lower() == 'overdue':
+                is_overdue = True
+            else:
+                # Try to parse as YYYY-MM-DD format
                 try:
-                    parsed_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
-                    filter_query = parsed_date.strftime('%Y-%m-%d')
+                    target_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
                 except ValueError:
-                    # If not a valid date format, use as is (Todoist supports natural language)
-                    filter_query = date_filter
+                    # If not a valid date format, return all tasks with a note
+                    filtered_tasks = all_tasks
+                    result_parts = [f"Tasks (showing all - could not parse date filter '{date_filter}'):"]
+                    
+                    if not filtered_tasks:
+                        return f"No tasks found."
+                    
+                    for task in filtered_tasks[:10]:  # Limit to first 10 tasks
+                        task_info = f"• {task.content}"
+                        if task.due:
+                            task_info += f" (Due: {task.due.string})"
+                        if task.priority > 1:
+                            priority_text = {2: "High", 3: "Higher", 4: "Highest"}.get(task.priority, f"Priority {task.priority}")
+                            task_info += f" [{priority_text}]"
+                        task_info += f" (ID: {task.id})"
+                        result_parts.append(task_info)
+                    
+                    if len(filtered_tasks) > 10:
+                        result_parts.append(f"... and {len(filtered_tasks) - 10} more tasks")
+                    
+                    return "\n".join(result_parts)
             
-            # Get tasks using filter
-            tasks = api.get_tasks(filter=filter_query)
+            # Filter tasks based on criteria
+            filtered_tasks = []
             
-            if not tasks:
+            for task in all_tasks:
+                if is_overdue:
+                    # Check for overdue tasks
+                    if task.due and task.due.date:
+                        try:
+                            # task.due.date is already a date object
+                            task_date = task.due.date
+                            if isinstance(task_date, str):
+                                task_date = datetime.strptime(task_date, '%Y-%m-%d').date()
+                            if task_date < date.today():
+                                filtered_tasks.append(task)
+                        except (ValueError, AttributeError):
+                            continue
+                elif target_date:
+                    # Check for tasks due on specific date
+                    if task.due and task.due.date:
+                        try:
+                            # task.due.date is already a date object
+                            task_date = task.due.date
+                            if isinstance(task_date, str):
+                                task_date = datetime.strptime(task_date, '%Y-%m-%d').date()
+                            if task_date == target_date:
+                                filtered_tasks.append(task)
+                        except (ValueError, AttributeError):
+                            continue
+                    elif date_filter.lower() == 'today' and not task.due:
+                        # Include tasks without due date when asking for today's tasks
+                        filtered_tasks.append(task)
+            
+            if not filtered_tasks:
                 return f"No tasks found for date: {date_filter}"
             
             # Format tasks for display
-            result_parts = [f"Tasks for {date_filter}:"]
+            result_parts = [f"Tasks for {date_filter} ({len(filtered_tasks)} found):"]
             
-            for task in tasks:
+            for task in filtered_tasks:
                 task_info = f"• {task.content}"
                 
                 # Add due date if available

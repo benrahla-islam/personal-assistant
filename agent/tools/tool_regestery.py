@@ -9,7 +9,6 @@ from .planner_tools.todoist_tool import (
 )
 from ..specialized_agents.planner_agent import (
     create_planner_tool,
-    create_react_planner_tool
 )
 from .planner_tools.database_tools import get_database_tools
 
@@ -28,7 +27,6 @@ def register_tools(category = 'all'):
             todoist_update_task_tool(),
             todoist_get_tasks_by_date_tool(),
             create_planner_tool(),
-            create_react_planner_tool()
         ] + get_database_tools()
     elif category == 'telegram':
         return [get_latest_messages]
@@ -46,7 +44,6 @@ def register_tools(category = 'all'):
     elif category == 'planning':
         return [
             create_planner_tool(),
-            create_react_planner_tool(),
             todoist_add_tasks_tool(),
             todoist_delete_task_tool(),
             todoist_update_task_tool(),
@@ -58,7 +55,6 @@ def register_tools(category = 'all'):
     elif category == 'agents':
         return [
             create_planner_tool(),
-            create_react_planner_tool()
         ]
     else:
         return [
@@ -73,5 +69,4 @@ def register_tools(category = 'all'):
             todoist_update_task_tool(),
             todoist_get_tasks_by_date_tool(),
             create_planner_tool(),
-            create_react_planner_tool()
         ] + get_database_tools()
