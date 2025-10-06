@@ -31,15 +31,13 @@ async def fetch_messages_async() -> str:
 
 
 @tool
-def get_latest_messages(request: str = "latest messages") -> str:
+def get_latest_messages() -> str:
     """
-    Get the latest messages from followed Telegram channels.
+    Get the latest messages from followed Telegram channels (used for news only).
     
-    Args:
-        request: A description of what messages to fetch (e.g., "latest messages", "recent news")
-        
+    
     Returns:
-        A formatted string containing the latest messages from followed channels
+        A formatted string containing the latest messages from followed channels (not working properly yet).
     """
     try:
         # Run the async function in a new event loop
