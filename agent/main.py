@@ -1,12 +1,13 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite import SqliteSaver
 from langchain_core.messages import HumanMessage, AIMessage
 import dotenv
 import os
 from pathlib import Path
 
 from .tools.tool_regestery import register_tools
+from .rate_limiter import wait_for_rate_limit, get_rate_limiter, configure_rate_limiter
 from config import setup_development_logging, get_logger
 
 # Set up colored logging
@@ -14,6 +15,18 @@ setup_development_logging()
 logger = get_logger(__name__)
 
 dotenv.load_dotenv()
+
+# Configure rate limiter based on environment or use defaults
+# Gemini free tier: 15 RPM (requests per minute)
+# Setting min_delay to 4.0 seconds = max 15 requests/minute
+RATE_LIMIT_DELAY = float(os.getenv("RATE_LIMIT_DELAY", "4.0"))
+RATE_LIMIT_MAX_RPM = int(os.getenv("RATE_LIMIT_MAX_RPM", "15"))
+
+configure_rate_limiter(
+    min_delay_seconds=RATE_LIMIT_DELAY,
+    max_requests_per_minute=RATE_LIMIT_MAX_RPM
+)
+logger.info(f"Rate limiter configured: {RATE_LIMIT_DELAY}s delay, {RATE_LIMIT_MAX_RPM} requests/min")
 
 # System prompt for the agent
 SYSTEM_PROMPT = """You are Jeffry, a friendly personal assistant who replies in short, casual messages like a real person texting — no long essays, no formal tone. 
@@ -59,10 +72,13 @@ logger.info("Initialized specialized agents LLM with secondary API key")
 tools = register_tools(shared_llm=agents_llm)
 logger.info(f"Registered {len(tools)} tools for the agent with distributed API keys")
 
-# Create persistent memory with SQLite checkpoint
-checkpoint_db_path = Path("agent_memory.db")
-memory = MemorySaver()  # Use in-memory for now, can switch to SqliteSaver later
-logger.info("Initialized persistent memory system")
+# Create persistent SQLite-based memory for conversation history
+checkpoint_db_path = "agent_memory.db"
+# SqliteSaver requires being used as a context manager, but we want persistent connection
+# So we create the connection and keep it open
+memory_conn = SqliteSaver.from_conn_string(checkpoint_db_path)
+memory = memory_conn.__enter__()  # Enter the context manager to get the saver
+logger.info(f"Initialized persistent SQLite memory at {checkpoint_db_path}")
 
 # Create the modern LangGraph agent with memory using main LLM
 agent = create_react_agent(
@@ -89,11 +105,15 @@ class ModernAgentExecutor:
         self.return_intermediate_steps = False
     
     def invoke(self, inputs):
-        """Execute the agent with session management."""
+        """Execute the agent with session management and rate limiting."""
         if isinstance(inputs, dict) and "input" in inputs:
             message = inputs["input"]
         else:
             message = str(inputs)
+        
+        # Apply rate limiting before making API request
+        logger.debug("⏳ Checking rate limits before API call...")
+        wait_for_rate_limit()
         
         # Simple approach: always include system context in user message for now
         # This ensures personality while we get the memory working
@@ -108,6 +128,10 @@ class ModernAgentExecutor:
             {"messages": messages},
             config=self.config
         )
+        
+        # Log rate limit stats after request
+        stats = get_rate_limiter().get_stats()
+        logger.debug(f"📊 Rate limit: {stats['requests_last_minute']}/{stats['max_requests_per_minute']} requests in last minute")
         
         # Extract the final response
         if result and "messages" in result:
