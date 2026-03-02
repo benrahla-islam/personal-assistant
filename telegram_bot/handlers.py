@@ -23,13 +23,9 @@ except Exception as e:
 async def process_text_message(user_message: str, user_id: int, chat_id: int, agent) -> str:
     """
     Process a text message through the agent and return the response.
-    
-    Runs the synchronous invoke_agent() in a thread pool so the
-    Telegram event loop is never blocked during LLM calls.
     """
-    import asyncio
-    from agent.agent_helpers import invoke_agent
-    return await asyncio.to_thread(invoke_agent, agent, user_message, user_id, chat_id)
+    from agent.agent_helpers import ainvoke_agent
+    return await ainvoke_agent(agent, user_message, user_id, chat_id)
 
 
 async def echo_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

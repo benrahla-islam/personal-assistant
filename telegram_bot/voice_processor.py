@@ -87,12 +87,8 @@ async def transcribe_voice_message(file_id: str, bot: Bot) -> Optional[str]:
 async def process_voice_message_with_agent(transcribed_text: str, agent, user_id: int, chat_id: int) -> str:
     """
     Process transcribed text through the agent and return response.
-
-    Runs the synchronous invoke_agent() in a thread pool so the
-    Telegram event loop is never blocked during LLM calls.
     """
-    import asyncio
-    from agent.agent_helpers import invoke_agent
+    from agent.agent_helpers import ainvoke_agent
 
     voice_prefix = "the user said via voice message: "
-    return await asyncio.to_thread(invoke_agent, agent, voice_prefix + transcribed_text, user_id, chat_id)
+    return await ainvoke_agent(agent, voice_prefix + transcribed_text, user_id, chat_id)
