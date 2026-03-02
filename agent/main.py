@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .tools.tool_registry import register_tools
 from .rate_limiter import wait_for_rate_limit, get_rate_limiter, configure_rate_limiter
-from config import setup_development_logging, get_logger
+from config import setup_development_logging, get_logger, settings
 
 # Set up colored logging
 setup_development_logging()
@@ -46,6 +46,7 @@ Available tool tips:
 # so that importing this module does NOT require a valid GOOGLE_API_KEY.
 # ---------------------------------------------------------------------------
 _agent = None
+_main_llm = None
 _agent_initialized = False
 
 
@@ -57,21 +58,23 @@ def _initialize_agent():
         return
 
     # Initialize the main LLM for the primary agent
-    main_llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
+    global _main_llm
+    _main_llm = ChatGoogleGenerativeAI(
+        model=settings.LLM_MODEL,
         google_api_key=os.getenv("GOOGLE_API_KEY"),
         temperature=0.1,
         system_instruction=SYSTEM_PROMPT,
         request_timeout=30,
         max_retries=2,
     )
+    main_llm = _main_llm
     logger.info("Initialized main Gemini LLM instance (API key 1)")
 
     # Initialize secondary LLM for specialized agents to distribute load
     agents_api_key = os.getenv("GOOGLE_API_KEY_AGENTS")
     if agents_api_key:
         agents_llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
+            model=settings.LLM_MODEL,
             google_api_key=agents_api_key,
             temperature=0.1,
             request_timeout=30,
@@ -106,6 +109,12 @@ def get_agent():
     """Return the initialized agent, creating it on first call."""
     _initialize_agent()
     return _agent
+
+
+def get_llm():
+    """Return the initialized main LLM, creating it on first call."""
+    _initialize_agent()
+    return _main_llm
 
 
 # For backward-compatibility: module-level names that lazily initialize.

@@ -27,6 +27,8 @@ _OPTIONAL_VARS = {
     "TODOIST_API_TOKEN": "Todoist API token for task management integration",
     "TELEGRAM_API_ID": "Telegram API ID for Telethon scraper",
     "TELEGRAM_API_HASH": "Telegram API hash for Telethon scraper",
+    "LLM_MODEL": "LLM model to use (default: gemini-2.5-flash)",
+    "MEMORY_PRUNE_THRESHOLD": "Number of messages before pruning history (default: 20)",
 }
 
 
@@ -107,3 +109,5 @@ def is_user_allowed(user_id: int) -> bool:
 # ---------------------------------------------------------------------------
 RATE_LIMIT_DELAY: float = float(os.getenv("RATE_LIMIT_DELAY", "4.0"))
 RATE_LIMIT_MAX_RPM: int = int(os.getenv("RATE_LIMIT_MAX_RPM", "15"))
+LLM_MODEL: str = os.getenv("LLM_MODEL", "gemini-2.5-flash")
+MEMORY_PRUNE_THRESHOLD: int = int(os.getenv("MEMORY_PRUNE_THRESHOLD", "20"))

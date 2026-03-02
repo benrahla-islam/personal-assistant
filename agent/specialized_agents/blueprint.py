@@ -10,7 +10,7 @@ from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
 import os
 import dotenv
-from config import get_logger
+from config import get_logger, settings
 
 dotenv.load_dotenv()
 logger = get_logger(__name__)
@@ -23,7 +23,7 @@ class Agent:
         self, 
         tools: Optional[List[Tool]] = None,
         system_prompt: str = "You are a helpful AI assistant.",
-        model: str = "gemini-2.5-flash",
+        model: str = settings.LLM_MODEL,
         temperature: float = 0.1,
         shared_llm=None
     ):

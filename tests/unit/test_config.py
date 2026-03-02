@@ -45,10 +45,12 @@ class TestEnvironmentConfig:
         # Test with mock environment variables
         with patch.dict(os.environ, {
             'GOOGLE_API_KEY': 'test_google_key',
-            'TELEGRAM_BOT_TOKEN': 'test_telegram_token'
+            'TELEGRAM_BOT_TOKEN': 'test_telegram_token',
+            'LLM_MODEL': 'test_model'
         }):
             assert os.getenv('GOOGLE_API_KEY') == 'test_google_key'
             assert os.getenv('TELEGRAM_BOT_TOKEN') == 'test_telegram_token'
+            assert os.getenv('LLM_MODEL') == 'test_model'
 
     def test_missing_environment_variables(self):
         """Test handling of missing environment variables."""
