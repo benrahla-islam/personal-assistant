@@ -138,7 +138,7 @@ class TestTelegramBotHandlers:
             # Get the module path and import it directly
             spec = importlib.util.spec_from_file_location(
                 "telegram_bot_main", 
-                "/home/islam/projects/personal assistant v1/telegram_bot/main.py"
+                os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "telegram_bot", "main.py")
             )
             bot_main_module = importlib.util.module_from_spec(spec)
             

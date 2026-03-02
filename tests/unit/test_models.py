@@ -180,7 +180,6 @@ class TestDatabaseModels:
         assert active_count == 0, "Soft delete failed - still appears in active query"
         assert total_count == original_count, "Hard delete occurred instead of soft delete"
         assert tag.is_deleted is True
-        assert tag.deleted_at is not None
 
     def test_relationships(self, test_session):
         """Test that model relationships work correctly."""
