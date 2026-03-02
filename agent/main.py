@@ -6,7 +6,7 @@ import dotenv
 import os
 from pathlib import Path
 
-from .tools.tool_regestery import register_tools
+from .tools.tool_registry import register_tools
 from .rate_limiter import wait_for_rate_limit, get_rate_limiter, configure_rate_limiter
 from config import setup_development_logging, get_logger
 
@@ -40,106 +40,88 @@ Available tool tips:
 - list_scheduled_tasks: Show all pending scheduled tasks
 - cancel_scheduled_task: Cancel a task by its ID"""
 
-# Initialize the main LLM for the primary agent
-main_llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",  # Best price-performance, optimized for agentic use cases
-    google_api_key=os.getenv("GOOGLE_API_KEY"),
-    temperature=0.1,
-    system_instruction=SYSTEM_PROMPT,  # This is the Gemini-specific way to set system prompt
-    # Add rate limiting configurations
-    request_timeout=30,  # 30 second timeout
-    max_retries=2,  # Limit retries to avoid burning through quota
-)
-logger.info("Initialized main Gemini LLM instance (API key 1)")
 
-# Initialize secondary LLM for specialized agents to distribute load
-agents_api_key = os.getenv("GOOGLE_API_KEY_AGENTS")
-if agents_api_key:
-    agents_llm = ChatGoogleGenerativeAI(
+# ---------------------------------------------------------------------------
+# Lazy initialization: LLM / tools / memory / agent are created on first use
+# so that importing this module does NOT require a valid GOOGLE_API_KEY.
+# ---------------------------------------------------------------------------
+_agent = None
+_agent_initialized = False
+
+
+def _initialize_agent():
+    """Create the LLM, register tools, open memory, and build the agent."""
+    global _agent, _agent_initialized
+
+    if _agent_initialized:
+        return
+
+    # Initialize the main LLM for the primary agent
+    main_llm = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash",
-        google_api_key=agents_api_key,
+        google_api_key=os.getenv("GOOGLE_API_KEY"),
         temperature=0.1,
+        system_instruction=SYSTEM_PROMPT,
         request_timeout=30,
         max_retries=2,
     )
-    logger.info("Initialized secondary Gemini LLM instance for specialized agents (API key 2)")
-else:
-    agents_llm = main_llm
-    logger.warning("No secondary API key found, specialized agents will use main LLM (shared quota)")
-logger.info("Initialized specialized agents LLM with secondary API key")
+    logger.info("Initialized main Gemini LLM instance (API key 1)")
 
-# Register tools with specialized agents using secondary LLM
-tools = register_tools(shared_llm=agents_llm)
-logger.info(f"Registered {len(tools)} tools for the agent with distributed API keys")
-
-# Create persistent SQLite-based memory for conversation history
-checkpoint_db_path = "agent_memory.db"
-# SqliteSaver requires being used as a context manager, but we want persistent connection
-# So we create the connection and keep it open
-memory_conn = SqliteSaver.from_conn_string(checkpoint_db_path)
-memory = memory_conn.__enter__()  # Enter the context manager to get the saver
-logger.info(f"Initialized persistent SQLite memory at {checkpoint_db_path}")
-
-# Create the modern LangGraph agent with memory using main LLM
-agent = create_react_agent(
-    model=main_llm,  # Main agent uses primary API key
-    tools=tools,     # Tools use secondary API key (agents_llm)
-    checkpointer=memory
-)
-logger.info("Created LangGraph ReAct agent with persistent memory")
-
-class ModernAgentExecutor:
-    """Modern agent executor wrapper with session management."""
-    
-    def __init__(self, agent, session_id: str = "default"):
-        self.agent = agent
-        self.session_id = session_id
-        self.config = {"configurable": {"thread_id": session_id}}
-        
-        # Compatibility properties for existing tests
-        self.tools = tools
-        self.memory = memory
-        self.verbose = True
-        self.handle_parsing_errors = True
-        self.max_iterations = 5
-        self.return_intermediate_steps = False
-    
-    def invoke(self, inputs):
-        """Execute the agent with session management and rate limiting."""
-        if isinstance(inputs, dict) and "input" in inputs:
-            message = inputs["input"]
-        else:
-            message = str(inputs)
-        
-        # Apply rate limiting before making API request
-        logger.debug("⏳ Checking rate limits before API call...")
-        wait_for_rate_limit()
-        
-        # Simple approach: always include system context in user message for now
-        # This ensures personality while we get the memory working
-        user_message = f"{message}"
-        
-        # The agent should maintain conversation history automatically via checkpointer
-        # We just need to send the new user message
-        messages = [HumanMessage(content=user_message)]
-        
-        # Invoke agent with session config - this should handle memory automatically
-        result = self.agent.invoke(
-            {"messages": messages},
-            config=self.config
+    # Initialize secondary LLM for specialized agents to distribute load
+    agents_api_key = os.getenv("GOOGLE_API_KEY_AGENTS")
+    if agents_api_key:
+        agents_llm = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash",
+            google_api_key=agents_api_key,
+            temperature=0.1,
+            request_timeout=30,
+            max_retries=2,
         )
-        
-        # Log rate limit stats after request
-        stats = get_rate_limiter().get_stats()
-        logger.debug(f"📊 Rate limit: {stats['requests_last_minute']}/{stats['max_requests_per_minute']} requests in last minute")
-        
-        # Extract the final response
-        if result and "messages" in result:
-            final_message = result["messages"][-1]
-            return {"output": final_message.content}
-        
-        return {"output": "I'm having trouble processing that request."}
+        logger.info("Initialized secondary Gemini LLM instance for specialized agents (API key 2)")
+    else:
+        agents_llm = main_llm
+        logger.warning("No secondary API key found, specialized agents will use main LLM (shared quota)")
 
-# Create the agent executor with default session
-agent_executor = ModernAgentExecutor(agent, session_id="personal_assistant_session")
-logger.info("Modern agent executor initialized with session management")
+    # Register tools with specialized agents using secondary LLM
+    tools = register_tools(shared_llm=agents_llm)
+    logger.info(f"Registered {len(tools)} tools for the agent with distributed API keys")
+
+    # Create persistent SQLite-based memory for conversation history
+    checkpoint_db_path = "agent_memory.db"
+    memory_conn = SqliteSaver.from_conn_string(checkpoint_db_path)
+    memory = memory_conn.__enter__()
+    logger.info(f"Initialized persistent SQLite memory at {checkpoint_db_path}")
+
+    # Create the modern LangGraph agent with memory using main LLM
+    _agent = create_react_agent(
+        model=main_llm,
+        tools=tools,
+        checkpointer=memory,
+    )
+    _agent_initialized = True
+    logger.info("Created LangGraph ReAct agent with persistent memory")
+
+
+def get_agent():
+    """Return the initialized agent, creating it on first call."""
+    _initialize_agent()
+    return _agent
+
+
+# For backward-compatibility: module-level names that lazily initialize.
+class _LazyAgent:
+    """Proxy that defers agent creation until first attribute access / call."""
+
+    def __getattr__(self, name):
+        return getattr(get_agent(), name)
+
+    def __call__(self, *args, **kwargs):
+        return get_agent()(*args, **kwargs)
+
+    # Support `invoke` directly (the most common usage)
+    def invoke(self, *args, **kwargs):
+        return get_agent().invoke(*args, **kwargs)
+
+
+agent_executor = _LazyAgent()
+agent = agent_executor  # alias

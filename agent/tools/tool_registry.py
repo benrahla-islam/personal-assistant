@@ -19,6 +19,7 @@ from .planner_tools.database_tools import get_database_tools
 def register_tools(category = 'all', shared_llm=None):
     if category == 'all':
         return [
+            get_latest_messages,
             schedule_task,
             list_scheduled_tasks,
             cancel_scheduled_task,

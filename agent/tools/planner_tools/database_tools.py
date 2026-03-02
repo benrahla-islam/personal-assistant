@@ -21,30 +21,6 @@ from config import get_logger
 
 logger = get_logger(__name__)
 
-
-"""
-Database tools for the personal assistant agent.
-Provides agent-friendly tools for managing single-user productivity data.
-"""
-
-from langchain_core.tools import tool
-from sqlalchemy.orm import Session
-from datetime import datetime, date, time
-from typing import List, Optional, Dict, Any
-import json
-import os
-
-# Import the refactored models
-from database.models import (
-    Base, create_database_engine, create_tables, get_session_factory, get_session,
-    Habit, HabitCompletion, Task, TaskChain, TaskChainItem, DailySchedule,
-    HabitScheduleItem, TaskScheduleItem, Tag, TimeEntry, Reminder,
-    FrequencyType, TaskStatus, TaskType, VolumeSize, DayType, ScheduleStatus
-)
-from config import get_logger
-
-logger = get_logger(__name__)
-
 # Database session management
 _engine = None
 _SessionFactory = None
