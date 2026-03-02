@@ -29,8 +29,10 @@ async def fetch_messages_async() -> str:
     finally:
         await collector.close()
 
+from .tool_registry import register_tool
 
 @tool
+@register_tool("telegram")
 def get_latest_messages(request: str = "") -> str:
     """
     Get the latest messages from followed Telegram channels (used for news only).

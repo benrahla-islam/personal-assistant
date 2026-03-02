@@ -4,7 +4,10 @@ from langchain_community.utilities import WikipediaAPIWrapper
 from langchain.tools import tool
 
 
+from .tool_registry import register_tool
+
 @tool
+@register_tool("search")
 def search_tool(query: str) -> str:
     """Search the web using DuckDuckGo."""
     search = DuckDuckGoSearchRun()
@@ -13,6 +16,7 @@ def search_tool(query: str) -> str:
 
 
 @tool
+@register_tool("search")
 def wiki_search_tool(query: str) -> str:
     """Search Wikipedia."""
     wikipedia = WikipediaAPIWrapper()

@@ -8,6 +8,7 @@ from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.cron import CronTrigger
 from langchain.tools import tool
 from config import get_logger
+from .tool_registry import register_tool
 from telegram import Bot # general telegram bot API, not related to my specific bot logic
 
 
@@ -146,6 +147,7 @@ async def run_scheduled_task(prompt: str, chat_id: str, task_id: str = None) -> 
         logger.error(f"Scheduled task failed{f' ({task_id})' if task_id else ''}: {e}", exc_info=True)
 
 @tool(args_schema=ScheduleTaskInput)
+@register_tool("scheduler")
 def schedule_task(prompt: str, run_at: str, chat_id: str, task_name: str = "Unnamed Task") -> str:
     """
     Schedule a reminder or task for the user at a specific future time.
@@ -219,6 +221,7 @@ def schedule_task(prompt: str, run_at: str, chat_id: str, task_name: str = "Unna
         return f"❌ {error_msg}"
 
 @tool
+@register_tool("scheduler")
 def list_scheduled_tasks() -> str:
     """
     List all currently scheduled tasks.
@@ -263,6 +266,7 @@ def list_scheduled_tasks() -> str:
         return f"❌ {error_msg}"
 
 @tool(args_schema=CancelTaskInput)
+@register_tool("scheduler")
 def cancel_scheduled_task(task_id: str) -> str:
     """
     Cancel a scheduled task by its ID.
