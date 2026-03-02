@@ -3,6 +3,7 @@ from telegram.ext import ContextTypes
 import logging
 # Set up colored logging
 from config import setup_development_logging, get_logger
+from config.settings import is_user_allowed
 from .voice_processor import transcribe_voice_message, process_voice_message_with_agent
 
 setup_development_logging()
@@ -38,9 +39,18 @@ async def process_text_message(user_message: str, user_id: int, chat_id: int, ag
 
 async def echo_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Process user message with the agent."""
-    user_message = update.message.text
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
+
+    # Security: reject users not in the allowlist
+    if not is_user_allowed(user_id):
+        logger.warning(f"Rejected message from unauthorized user {user_id}")
+        await update.message.reply_text(
+            "Sorry, you are not authorized to use this bot."
+        )
+        return
+
+    user_message = update.message.text
     
     # Check if agent is available
     if agent is None:
@@ -87,6 +97,15 @@ async def voice_message_handler(update: Update, context: ContextTypes.DEFAULT_TY
     """Handle voice messages by transcribing and processing them."""
     user_id = update.effective_user.id
     chat_id = update.effective_chat.id
+
+    # Security: reject users not in the allowlist
+    if not is_user_allowed(user_id):
+        logger.warning(f"Rejected voice message from unauthorized user {user_id}")
+        await update.message.reply_text(
+            "Sorry, you are not authorized to use this bot."
+        )
+        return
+
     logger.info(f"Received voice message from user {user_id}")
 
     # Check if agent is available
