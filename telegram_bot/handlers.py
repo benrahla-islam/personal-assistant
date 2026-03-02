@@ -24,17 +24,12 @@ async def process_text_message(user_message: str, user_id: int, chat_id: int, ag
     """
     Process a text message through the agent and return the response.
     
-    Args:
-        user_message: The user's text message
-        user_id: Telegram user ID  
-        chat_id: Telegram chat ID
-        agent: The AI agent executor
-        
-    Returns:
-        Agent response text
+    Runs the synchronous invoke_agent() in a thread pool so the
+    Telegram event loop is never blocked during LLM calls.
     """
+    import asyncio
     from agent.agent_helpers import invoke_agent
-    return invoke_agent(agent, user_message, user_id, chat_id)
+    return await asyncio.to_thread(invoke_agent, agent, user_message, user_id, chat_id)
 
 
 async def echo_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
