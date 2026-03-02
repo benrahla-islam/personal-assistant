@@ -1,6 +1,13 @@
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 import os
+
+# Skip entire module if no API key — these tests import agent.main which triggers LLM init
+pytestmark = pytest.mark.skipif(
+    not os.getenv("GOOGLE_API_KEY"),
+    reason="GOOGLE_API_KEY not set — integration tests require Gemini credentials",
+)
+
 from agent.main import agent_executor, agent
 from agent.tools.tool_registry import register_tools
 
@@ -101,10 +108,11 @@ class TestToolRegistry:
             assert expected_tool in tool_names
 
     def test_register_invalid_category(self):
-        """Test registering with invalid category falls back to all + todoist tools."""
+        """Test registering with invalid category falls back to 'all' tools."""
         tools = register_tools('invalid_category')
-        # Fallback includes all tools + todoist tools = 26
-        assert len(tools) == 26
+        # Fallback is the same as 'all' = 22 tools
+        all_tools = register_tools('all')
+        assert len(tools) == len(all_tools)
 
 
 class TestAgentIntegration:

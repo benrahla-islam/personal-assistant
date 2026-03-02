@@ -4,6 +4,11 @@ import asyncio
 from datetime import datetime, timedelta
 import os
 
+# Skip entire module if no API key — these tests invoke the real LLM
+pytestmark = pytest.mark.skipif(
+    not os.getenv("GOOGLE_API_KEY"),
+    reason="GOOGLE_API_KEY not set — E2E tests require live Gemini credentials",
+)
 
 class TestEndToEndWorkflow:
     """End-to-end integration tests for the complete system."""
