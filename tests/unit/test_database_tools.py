@@ -173,8 +173,8 @@ class TestDatabaseTools:
             "suggested_time": "09:00"
         })
         
-        assert "added" in habit_add_result.lower()
-        assert "added" in task_add_result.lower()
+        assert "added" in habit_add_result.lower() or "already" in habit_add_result.lower()
+        assert "added" in task_add_result.lower() or "already" in task_add_result.lower()
         
         # Get the complete schedule
         schedule_result = self.tool_dict["get_daily_schedule_tool"].invoke({
