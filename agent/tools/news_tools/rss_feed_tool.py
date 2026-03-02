@@ -144,11 +144,11 @@ def rss_multiple_feeds_tool():
         
         # Sort by published date (newest first) - handle None values
         def get_sort_key(item):
-            published = item.get('published', '')
+            published = item.get('published')
             # If published is None or empty, put at the end
             if not published:
                 return ''
-            return published
+            return str(published)
         
         try:
             all_items.sort(key=get_sort_key, reverse=True)

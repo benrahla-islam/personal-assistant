@@ -118,24 +118,25 @@ async def run_scheduled_task(prompt: str, chat_id: str, task_id: str = None) -> 
         
         # Avoid circular import by importing here
         from agent.main import agent_executor
+        from agent.agent_helpers import invoke_agent
         
-        # Get current time with UTC+1 timezone for context
-        current_time = datetime.now(timezone(timedelta(hours=1)))
-        
-        # Create a properly formatted prompt with timezone context
-        # This ensures the agent has the same context as when used interactively
-        formatted_prompt = f"""Current time: {current_time.strftime('%Y-%m-%d %H:%M:%S')} UTC+1 (Central European Time). 
-From chat_id: {chat_id}, scheduled task reminder: {prompt}
-
-IMPORTANT: If you need to schedule any tasks, use the same timezone (UTC+1) for the scheduled time."""
-        
-        # Use the modern invoke method in a thread to avoid blocking the scheduler
-        # The agent can call tools during execution - this runs the full workflow
-        result = await asyncio.to_thread(
-            agent_executor.invoke, {"input": formatted_prompt}
+        # Build a descriptive message for the agent
+        enriched_prompt = (
+            f"Scheduled task reminder: {prompt}\n\n"
+            f"IMPORTANT: If you need to schedule any tasks, "
+            f"use the same timezone (UTC+1) for the scheduled time."
         )
         
-        output = result.get("output", "No output received")
+        # invoke_agent handles rate-limiting, timestamp injection, and response extraction
+        # Run in a thread to avoid blocking the APScheduler event loop
+        output = await asyncio.to_thread(
+            invoke_agent,
+            agent_executor,
+            enriched_prompt,
+            int(chat_id),  # user_id — use chat_id as thread id for scheduled tasks
+            int(chat_id),
+        )
+        
         bot = Bot(token=os.getenv('TELEGRAM_BOT_TOKEN'))
         await bot.send_message(chat_id=chat_id, text=output)
         logger.info(f"Scheduled task completed successfully{f' ({task_id})' if task_id else ''}")

@@ -31,16 +31,40 @@ async def fetch_messages_async() -> str:
 
 
 @tool
-def get_latest_messages() -> str:
+def get_latest_messages(request: str = "") -> str:
     """
     Get the latest messages from followed Telegram channels (used for news only).
     
+    Args:
+        request: The context or what kind of news is requested (optional).
     
     Returns:
-        A formatted string containing the latest messages from followed channels (not working properly yet).
+        A formatted string containing the latest messages from followed channels.
     """
+    import threading
+    
+    result = None
+    exception = None
+
+    def run_in_thread():
+        nonlocal result, exception
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(fetch_messages_async())
+            finally:
+                loop.close()
+        except Exception as e:
+            exception = e
+
     try:
-        # Run the async function in a new event loop
-        return asyncio.run(fetch_messages_async())
+        thread = threading.Thread(target=run_in_thread)
+        thread.start()
+        thread.join()
+        
+        if exception:
+            return f"Error fetching messages: {str(exception)}"
+        return result or "No messages found."
     except Exception as e:
-        return f"Error fetching messages: {str(e)}"
+        return f"Error managing fetch thread: {str(e)}"

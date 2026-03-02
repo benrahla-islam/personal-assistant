@@ -1,7 +1,6 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 import logging
-from datetime import datetime, timezone, timedelta
 # Set up colored logging
 from config import setup_development_logging, get_logger
 from .voice_processor import transcribe_voice_message, process_voice_message_with_agent
@@ -33,73 +32,8 @@ async def process_text_message(user_message: str, user_id: int, chat_id: int, ag
     Returns:
         Agent response text
     """
-    logger.info(f"Processing text message from user {user_id}: '{user_message[:100]}...'")
-    
-    try:
-        # Use UTC+1 timezone (Central European Time)
-        utc_plus_1 = timezone(timedelta(hours=1))
-        current_time = datetime.now(utc_plus_1)
-        prompt = f"Current time: {current_time.strftime('%Y-%m-%d %H:%M:%S')} UTC+1 (Central European Time). From chat_id: {chat_id}, the user asked: {user_message}"
-        
-        agent_response = agent.invoke({"input": prompt})
-        logger.debug(f"Got agent response: {type(agent_response)}")
-        
-        # Extract response text using the same logic as voice processor
-        response_text = _extract_agent_response(agent_response)
-        
-        # Limit response length
-        if len(response_text) > 4000:
-            response_text = response_text[:4000] + "... (message truncated)"
-            logger.warning(f"Response truncated for user {user_id}")
-        
-        logger.info(f"Text message processing completed for user {user_id}")
-        return response_text
-        
-    except Exception as e:
-        logger.error(f"Error processing text message for user {user_id}: {e}", exc_info=True)
-        
-        # Handle parsing errors gracefully
-        if "Could not parse LLM output" in str(e):
-            logger.warning("Attempting to extract response from parsing error")
-            error_text = str(e)
-            if "`" in error_text:
-                start_idx = error_text.find("`") + 1
-                end_idx = error_text.rfind("`")
-                if start_idx > 0 and end_idx > start_idx:
-                    extracted_response = error_text[start_idx:end_idx]
-                    logger.info(f"Extracted response from parsing error for user {user_id}")
-                    return extracted_response
-        
-        raise e
-
-
-def _extract_agent_response(agent_response) -> str:
-    """Extract text response from various agent response formats."""
-    
-    # Handle AgentFinish (final response)
-    if hasattr(agent_response, 'return_values') and hasattr(agent_response, 'log'):
-        if isinstance(agent_response.return_values, dict) and 'output' in agent_response.return_values:
-            return agent_response.return_values['output']
-        else:
-            return str(agent_response.return_values)
-    
-    # Handle dict with 'output' key
-    elif isinstance(agent_response, dict) and 'output' in agent_response:
-        return str(agent_response['output'])
-    
-    # Handle objects with common response attributes
-    elif hasattr(agent_response, 'content'):
-        return str(agent_response.content)
-    elif hasattr(agent_response, 'response'):
-        return str(agent_response.response)
-    elif hasattr(agent_response, 'text'):
-        return str(agent_response.text)
-    elif hasattr(agent_response, 'message'):
-        return str(agent_response.message)
-    
-    # Fallback to string conversion
-    else:
-        return str(agent_response)
+    from agent.agent_helpers import invoke_agent
+    return invoke_agent(agent, user_message, user_id, chat_id)
 
 
 async def echo_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

@@ -97,73 +97,7 @@ async def process_voice_message_with_agent(transcribed_text: str, agent, user_id
     Returns:
         Agent response text
     """
-    from datetime import datetime, timezone, timedelta
-    
-    try:
-        logger.info(f"Processing transcribed text through agent for user {user_id}: '{transcribed_text[:50]}...'")
-        
-        # Prepare prompt with context
-        utc_plus_1 = timezone(timedelta(hours=1))
-        current_time = datetime.now(utc_plus_1)
-        prompt = f"Current time: {current_time.strftime('%Y-%m-%d %H:%M:%S')} UTC+1 (Central European Time). From chat_id: {chat_id}, the user said via voice message: {transcribed_text}"
-        
-        # Invoke agent
-        agent_response = agent.invoke({"input": prompt})
-        logger.debug(f"Agent response type: {type(agent_response)}")
-        
-        # Extract response text
-        response_text = _extract_agent_response(agent_response)
-        
-        # Limit response length
-        if len(response_text) > 4000:
-            response_text = response_text[:4000] + "... (message truncated)"
-            logger.warning(f"Response truncated for user {user_id}")
-        
-        logger.info(f"Agent processing completed for user {user_id}")
-        return response_text
-        
-    except Exception as e:
-        logger.error(f"Error processing voice message through agent for user {user_id}: {e}", exc_info=True)
-        
-        # Handle parsing errors gracefully
-        if "Could not parse LLM output" in str(e):
-            logger.warning("Attempting to extract response from parsing error")
-            error_text = str(e)
-            if "`" in error_text:
-                start_idx = error_text.find("`") + 1
-                end_idx = error_text.rfind("`")
-                if start_idx > 0 and end_idx > start_idx:
-                    extracted_response = error_text[start_idx:end_idx]
-                    logger.info(f"Extracted response from parsing error for user {user_id}")
-                    return extracted_response
-        
-        raise e
+    from agent.agent_helpers import invoke_agent
 
-
-def _extract_agent_response(agent_response) -> str:
-    """Extract text response from various agent response formats."""
-    
-    # Handle AgentFinish (final response)
-    if hasattr(agent_response, 'return_values') and hasattr(agent_response, 'log'):
-        if isinstance(agent_response.return_values, dict) and 'output' in agent_response.return_values:
-            return agent_response.return_values['output']
-        else:
-            return str(agent_response.return_values)
-    
-    # Handle dict with 'output' key
-    elif isinstance(agent_response, dict) and 'output' in agent_response:
-        return str(agent_response['output'])
-    
-    # Handle objects with common response attributes
-    elif hasattr(agent_response, 'content'):
-        return str(agent_response.content)
-    elif hasattr(agent_response, 'response'):
-        return str(agent_response.response)
-    elif hasattr(agent_response, 'text'):
-        return str(agent_response.text)
-    elif hasattr(agent_response, 'message'):
-        return str(agent_response.message)
-    
-    # Fallback to string conversion
-    else:
-        return str(agent_response)
+    voice_prefix = "the user said via voice message: "
+    return invoke_agent(agent, voice_prefix + transcribed_text, user_id, chat_id)
